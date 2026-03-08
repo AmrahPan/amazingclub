@@ -1,0 +1,1925 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>amazingclub — динамическое ценообразование для ресторанов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Onest:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────
+   TOKENS & RESET
+───────────────────────────────────────── */
+:root {
+  /* Colors */
+  --bg:        #080808;
+  --bg-mid:    #0f0f0f;
+  --bg-card:   rgba(240,237,230,.03);
+  --border:    rgba(240,237,230,.08);
+  --border-lo: rgba(240,237,230,.06);
+  --text:      #f0ede6;
+  --text-2:    rgba(240,237,230,.55);
+  --text-3:    rgba(240,237,230,.35);
+  --text-4:    rgba(240,237,230,.2);
+  --green:     #7CFC00;
+  --green-dim: rgba(124,252,0,.07);
+  --green-bg:  rgba(124,252,0,.04);
+
+  /* 8px spacing scale */
+  --s1:  8px;
+  --s2:  16px;
+  --s3:  24px;
+  --s4:  32px;
+  --s5:  40px;
+  --s6:  48px;
+  --s7:  56px;
+  --s8:  64px;
+  --s9:  72px;
+  --s10: 80px;
+
+  /* Typography */
+  --font-display: 'Unbounded', sans-serif;
+  --font-body:    'Onest', sans-serif;
+
+  /* Layout */
+  --max-w:     1200px;
+  --nav-h:     60px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
+  line-height: 1.6;
+}
+@media (min-width: 961px) { body { cursor: none; } button { cursor: none; } }
+a { text-decoration: none; color: inherit; }
+button, input, select { font-family: inherit; }
+
+/* ─────────────────────────────────────────
+   CURSOR
+───────────────────────────────────────── */
+#cur {
+  position: fixed;
+  width: 12px; height: 12px;
+  background: var(--text);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: width .2s, height .2s;
+  mix-blend-mode: difference;
+}
+#cur.big { width: 44px; height: 44px; }
+@media (max-width: 960px) { #cur { display: none; } }
+
+/* ─────────────────────────────────────────
+   NAVIGATION
+───────────────────────────────────────── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--nav-h);
+  padding: 0 var(--s6);
+}
+@media (min-width: 961px) { nav { mix-blend-mode: difference; } }
+
+.nav-logo {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -.04em;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+.nav-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 12px var(--green);
+  animation: glow 2s ease infinite;
+  flex-shrink: 0;
+}
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 8px var(--green); }
+  50%       { box-shadow: 0 0 20px var(--green), 0 0 40px rgba(124,252,0,.3); }
+}
+.nav-cta {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: 10px var(--s3);
+  border-radius: 100px;
+  background: var(--text);
+  color: var(--bg);
+  border: none;
+  transition: opacity .15s;
+  white-space: nowrap;
+}
+.nav-cta:hover { opacity: .85; }
+
+/* ─────────────────────────────────────────
+   LAYOUT PRIMITIVES
+───────────────────────────────────────── */
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  padding: var(--s10) var(--s6);
+}
+.panel.dark   { background: var(--bg); }
+.panel.mid    { background: var(--bg-mid); }
+
+.sec-pad {
+  width: 100%;
+  max-width: var(--max-w);
+  margin: 0 auto;
+}
+
+/* ─────────────────────────────────────────
+   TYPOGRAPHY SYSTEM
+   H1: Unbounded 900 — hero title
+   H2: Unbounded 900 — section display (kinetic)
+   H3: Unbounded 700 — section headings (feat, how)
+   Body L: Onest 400 16px / 1.65 — primary body
+   Body S: Onest 400 14px / 1.65 — secondary body
+   Caption: Onest 400 12px / 1.5 — captions, labels
+   Eyebrow: Unbounded 700 11px uppercase — section labels
+───────────────────────────────────────── */
+.eyebrow {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(124,252,0,.7);
+  margin-bottom: var(--s6);
+  display: block;
+}
+
+/* Kinetic display text */
+.kin-wrap { width: 100%; line-height: 1.0; }
+.kin-line {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 900;
+  color: var(--text);
+}
+.kin-line.sz-big { font-size: clamp(48px, 7.5vw, 112px); letter-spacing: -.04em; line-height: .95; }
+.kin-line.sz-med { font-size: clamp(32px, 4.5vw, 64px);  letter-spacing: -.03em; line-height: .97; }
+.kin-line.green   { color: var(--green); }
+.kin-line.outline { -webkit-text-stroke: 2px var(--text); color: transparent; }
+.kin-line.outline.green { -webkit-text-stroke: 2px var(--green); color: transparent; }
+.kin-line.dim     { color: rgba(240,237,230,.13); }
+.kin-line.dim2    { color: rgba(240,237,230,.22); }
+
+/* ─────────────────────────────────────────
+   HERO
+───────────────────────────────────────── */
+#hero {
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: var(--nav-h) var(--s6) var(--s6);
+}
+
+/* Inner constraint — centered, max 1200px */
+.hero-inner {
+  width: 100%;
+  max-width: var(--max-w);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s6);
+}
+
+.hero-left {
+  flex: 0 0 440px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-eyebrow {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(124,252,0,.65);
+  margin-bottom: var(--s3);
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+.hero-eyebrow-dot {
+  width: 5px; height: 5px;
+  background: var(--green);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.hero-h1 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -.04em;
+  line-height: 1.15;
+  color: var(--text);
+  margin-bottom: var(--s2);
+}
+.hero-h1 em {
+  color: var(--green);
+  font-style: normal;
+  display: block;
+  margin-top: 2px;
+}
+
+.hero-sub {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-3);
+  line-height: 1.7;
+  margin-bottom: var(--s4);
+  max-width: 320px;
+}
+
+.btn-primary {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  padding: 13px var(--s4);
+  border-radius: 100px;
+  background: var(--green);
+  color: var(--bg);
+  border: none;
+  align-self: flex-start;
+  transition: opacity .15s, box-shadow .15s;
+  white-space: nowrap;
+}
+.btn-primary:hover {
+  opacity: .88;
+  box-shadow: 0 6px 24px rgba(124,252,0,.35);
+}
+
+.hero-proof-row {
+  display: flex;
+  gap: var(--s4);
+  margin-top: var(--s4);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border);
+}
+.hp { display: flex; flex-direction: column; gap: 4px; }
+.hp-n {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--green);
+  letter-spacing: -.03em;
+  line-height: 1;
+}
+.hp-l {
+  font-size: 11px;
+  color: var(--text-4);
+  line-height: 1.45;
+}
+
+/* ─────────────────────────────────────────
+   BEFORE/AFTER WIDGET
+───────────────────────────────────────── */
+.ba-widget {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 580px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: rgba(240,237,230,.015);
+}
+
+.ba-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-lo);
+}
+.ba-tab {
+  flex: 1;
+  padding: 14px var(--s3);
+  font-size: 12px;
+  font-weight: 600;
+  background: none;
+  border: none;
+  color: var(--text-4);
+  transition: color .2s, background .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s1);
+  letter-spacing: .01em;
+}
+.ba-tab.active         { color: var(--text); background: rgba(240,237,230,.04); }
+.ba-tab.active.after-tab { color: var(--green); background: rgba(124,252,0,.05); }
+.ba-tab-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.ba-tab-sep { width: 1px; background: var(--border-lo); align-self: stretch; }
+
+.ba-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: 10px var(--s3);
+  border-bottom: 1px solid var(--border-lo);
+  background: rgba(240,237,230,.015);
+}
+.ba-sw-lbl {
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+.ba-switch {
+  width: 48px; height: 24px;
+  border-radius: 100px;
+  background: rgba(240,237,230,.08);
+  border: 1px solid rgba(240,237,230,.12);
+  position: relative;
+  transition: background .3s, border-color .3s;
+  flex-shrink: 0;
+}
+.ba-switch.on {
+  background: rgba(124,252,0,.2);
+  border-color: rgba(124,252,0,.4);
+}
+.ba-switch-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(240,237,230,.4);
+  position: absolute;
+  top: 2px; left: 2px;
+  transition: transform .32s cubic-bezier(.34,1.56,.64,1), background .3s;
+}
+.ba-switch.on .ba-switch-dot {
+  transform: translateX(24px);
+  background: var(--green);
+  box-shadow: 0 0 10px rgba(124,252,0,.5);
+}
+.ba-sw-status {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--green);
+  min-width: 24px;
+}
+
+.ba-panels { position: relative; }
+.ba-panel {
+  padding: var(--s3);
+  display: none;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.ba-panel.visible { display: flex; }
+
+/* Hall */
+.ba-hall { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.ba-table {
+  aspect-ratio: 1;
+  border-radius: 5px;
+  border: 1px solid rgba(240,237,230,.07);
+  background: rgba(240,237,230,.025);
+  transition: background .4s, border-color .4s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ba-table::after {
+  content: '';
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background .4s;
+}
+.ba-table.filled { background: rgba(240,237,230,.1); border-color: rgba(240,237,230,.18); }
+.ba-table.filled::after { background: rgba(240,237,230,.45); }
+.ba-table.empty-disc { background: rgba(124,252,0,.07); border-color: rgba(124,252,0,.18); }
+.ba-table.empty-disc::after { background: rgba(124,252,0,.35); }
+
+/* Discount badge */
+.ba-disc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(124,252,0,.1);
+  border: 1px solid rgba(124,252,0,.22);
+  border-radius: 100px;
+  padding: 5px 12px;
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green);
+  font-family: var(--font-display);
+  letter-spacing: .03em;
+}
+.ba-disc-pulse {
+  width: 5px; height: 5px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: glow 1.5s ease infinite;
+}
+
+/* Metrics */
+.ba-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s1);
+}
+.ba-metric {
+  background: rgba(240,237,230,.03);
+  border: 1px solid rgba(240,237,230,.07);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+.ba-panel.after .ba-metric {
+  background: rgba(124,252,0,.04);
+  border-color: rgba(124,252,0,.1);
+}
+.ba-metric-v {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -.03em;
+  line-height: 1;
+  margin-bottom: 4px;
+  color: rgba(240,237,230,.25);
+}
+.ba-panel.after .ba-metric-v      { color: var(--text); }
+.ba-metric-v.acc                   { color: rgba(124,252,0,.22); }
+.ba-panel.after .ba-metric-v.acc   { color: var(--green); }
+.ba-metric-l {
+  font-size: 10px;
+  color: var(--text-3);
+  line-height: 1.4;
+}
+
+/* Revenue */
+.ba-revenue {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px var(--s2);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(240,237,230,.07);
+}
+.ba-panel.before .ba-revenue { background: rgba(255,60,60,.04);  border-color: rgba(255,60,60,.08); }
+.ba-panel.after  .ba-revenue { background: rgba(124,252,0,.06);  border-color: rgba(124,252,0,.15); }
+.ba-rev-lbl { font-size: 12px; color: var(--text-3); }
+.ba-rev-v {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -.03em;
+}
+.ba-panel.before .ba-rev-v { color: rgba(255,120,120,.6); }
+.ba-panel.after  .ba-rev-v { color: var(--green); }
+
+/* ─────────────────────────────────────────
+   TICKER
+───────────────────────────────────────── */
+.ticker {
+  background: var(--green);
+  padding: 13px 0;
+  overflow: hidden;
+}
+.ticker-inner {
+  display: inline-flex;
+  animation: tick 28s linear infinite;
+}
+@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ti {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--bg);
+  padding: 0 var(--s4);
+  white-space: nowrap;
+  letter-spacing: .04em;
+}
+.ti-sep {
+  width: 4px; height: 4px;
+  background: rgba(8,8,8,.3);
+  border-radius: 50%;
+  margin-right: var(--s4);
+}
+
+/* ─────────────────────────────────────────
+   TRUST BAR (after ticker)
+───────────────────────────────────────── */
+.trust-section {
+  background: var(--bg-mid);
+  border-bottom: 1px solid var(--border-lo);
+  padding: var(--s6) var(--s6);
+}
+.trust-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  align-items: center;
+  gap: 0;
+}
+.trust-div {
+  width: 1px;
+  height: 40px;
+  background: var(--border);
+  justify-self: center;
+}
+.trust-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--s2) var(--s4);
+}
+.trust-n {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 2.8vw, 36px);
+  font-weight: 900;
+  color: var(--green);
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+.trust-l {
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.45;
+  max-width: 180px;
+}
+
+/* ─────────────────────────────────────────
+   SECTION HEADER (used inside content sections)
+───────────────────────────────────────── */
+.sec-header {
+  margin-bottom: var(--s7);
+}
+.sec-header .kin-wrap {
+  margin-top: var(--s2);
+}
+
+/* ─────────────────────────────────────────
+   STATEMENT DIVIDER
+───────────────────────────────────────── */
+.statement-div {
+  background: var(--bg-mid);
+  border-top: 1px solid var(--border-lo);
+  border-bottom: 1px solid var(--border-lo);
+  padding: var(--s7) var(--s6);
+}
+.statement-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s4);
+  flex-wrap: wrap;
+}
+.statement-line {
+  font-family: var(--font-display);
+  font-size: clamp(16px, 2vw, 24px);
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: -.02em;
+}
+.statement-zero {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 6vw, 80px);
+  font-weight: 900;
+  color: var(--green);
+  letter-spacing: -.05em;
+  line-height: 1;
+}
+
+/* ─────────────────────────────────────────
+   FEATURES
+───────────────────────────────────────── */
+.feat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  width: 100%;
+  background: var(--border-lo);
+  border: 1px solid var(--border-lo);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.feat-c {
+  padding: var(--s5) var(--s5);
+  background: var(--bg);
+  transition: background .2s;
+}
+.feat-c:hover { background: rgba(240,237,230,.025); }
+.feat-ico {
+  width: 40px; height: 40px;
+  border-radius: var(--s1);
+  border: 1px solid rgba(124,252,0,.2);
+  background: rgba(124,252,0,.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--s3);
+  flex-shrink: 0;
+}
+.feat-ico svg {
+  width: 18px; height: 18px;
+  stroke: var(--green);
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.feat-h {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.02em;
+  margin-bottom: var(--s1);
+  line-height: 1.3;
+}
+.feat-p {
+  font-size: 13px;
+  color: var(--text-3);
+  line-height: 1.65;
+}
+
+/* ─────────────────────────────────────────
+   HOW STEPS
+───────────────────────────────────────── */
+.how-steps {
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+}
+.how-step {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: var(--s4);
+  padding: var(--s5) 0;
+  border-bottom: 1px solid var(--border-lo);
+}
+.how-step:last-child { border-bottom: none; padding-bottom: 0; }
+.how-step:first-child { padding-top: 0; }
+.hs-n {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-4);
+  padding-top: 5px;
+  transition: color .2s;
+  letter-spacing: .02em;
+}
+.how-step:hover .hs-n,
+.how-step.on    .hs-n { color: var(--green); }
+.hs-h {
+  font-family: var(--font-display);
+  font-size: clamp(16px, 1.8vw, 24px);
+  font-weight: 700;
+  color: var(--text-4);
+  letter-spacing: -.02em;
+  margin-bottom: var(--s1);
+  transition: color .2s;
+  line-height: 1.2;
+}
+.how-step:hover .hs-h,
+.how-step.on    .hs-h { color: var(--text); }
+.hs-p {
+  font-size: 14px;
+  color: var(--text-4);
+  line-height: 1.65;
+  transition: color .2s;
+  max-width: 480px;
+}
+.how-step:hover .hs-p,
+.how-step.on    .hs-p { color: var(--text-3); }
+
+/* ─────────────────────────────────────────
+   CALCULATOR
+───────────────────────────────────────── */
+.calc-card {
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.calc-l {
+  padding: var(--s7) var(--s7);
+  border-right: 1px solid var(--border);
+}
+.calc-r {
+  padding: var(--s7) var(--s7);
+  background: rgba(124,252,0,.025);
+}
+.calc-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.02em;
+  margin-bottom: 4px;
+}
+.calc-subtitle {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-bottom: var(--s5);
+  line-height: 1.5;
+}
+.range-g { margin-bottom: var(--s4); }
+.range-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--s1);
+}
+.range-lbl { font-size: 13px; color: var(--text-3); }
+.range-val {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+}
+input[type=range] {
+  width: 100%;
+  height: 2px;
+  border-radius: 100px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(240,237,230,.12);
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--green);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 10px rgba(124,252,0,.4);
+}
+input[type=range]::-moz-range-thumb {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--green);
+  border: 2px solid var(--bg);
+}
+
+.res-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-4);
+  margin-bottom: var(--s1);
+}
+.res-big {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 4vw, 56px);
+  font-weight: 900;
+  letter-spacing: -.04em;
+  color: var(--green);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.res-sub {
+  font-size: 12px;
+  color: var(--text-4);
+  margin-bottom: var(--s4);
+}
+.calc-rows {
+  border: 1px solid var(--border-lo);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--s3);
+}
+.cr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px var(--s3);
+  border-bottom: 1px solid var(--border-lo);
+  font-size: 13px;
+}
+.cr:last-child { border-bottom: none; background: rgba(124,252,0,.05); }
+.cr-l { color: var(--text-3); }
+.cr-v { font-weight: 500; color: var(--text); }
+.cr-v.neg { color: rgba(255,85,85,.7); }
+.cr-v.pos {
+  color: var(--green);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+.calc-note {
+  font-size: 11px;
+  color: var(--text-4);
+  line-height: 1.6;
+  margin-bottom: var(--s3);
+}
+.btn-calc {
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  padding: 15px;
+  border-radius: var(--radius-sm);
+  background: var(--green);
+  color: var(--bg);
+  border: none;
+  transition: opacity .15s, box-shadow .15s;
+}
+.btn-calc:hover {
+  opacity: .88;
+  box-shadow: 0 6px 24px rgba(124,252,0,.35);
+}
+
+/* ─────────────────────────────────────────
+   TESTIMONIALS
+───────────────────────────────────────── */
+.testi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s2);
+  width: 100%;
+}
+.tc {
+  background: var(--bg-card);
+  border: 1px solid var(--border-lo);
+  border-radius: var(--radius-lg);
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  transition: border-color .2s, transform .2s;
+}
+.tc:hover { border-color: rgba(124,252,0,.2); transform: translateY(-3px); }
+.tc.feat { background: rgba(124,252,0,.05); border-color: rgba(124,252,0,.2); }
+.tc-stars {
+  font-size: 12px;
+  color: var(--green);
+  letter-spacing: 3px;
+  margin-bottom: var(--s2);
+}
+.tc-q {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-3);
+  font-style: italic;
+  margin-bottom: var(--s3);
+  flex: 1;
+}
+.tc.feat .tc-q { color: rgba(240,237,230,.75); }
+.tc-author { display: flex; align-items: center; gap: var(--s2); }
+.tc-av {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(124,252,0,.15);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.tc-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+.tc-role { font-size: 11px; color: var(--text-4); }
+.tc-kpi {
+  display: flex;
+  gap: var(--s3);
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid rgba(124,252,0,.12);
+}
+.kv {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--green);
+  letter-spacing: -.03em;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.kl { font-size: 10px; color: var(--text-4); text-transform: uppercase; letter-spacing: .08em; }
+
+/* ─────────────────────────────────────────
+   FAQ
+───────────────────────────────────────── */
+.faq-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: var(--s10);
+  align-items: start;
+  width: 100%;
+}
+.faq-left-sub {
+  font-size: 14px;
+  color: var(--text-3);
+  line-height: 1.65;
+  margin-bottom: var(--s4);
+  margin-top: var(--s2);
+}
+.btn-ghost {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  padding: 12px var(--s4);
+  border-radius: 100px;
+  background: var(--green);
+  color: var(--bg);
+  border: none;
+  white-space: nowrap;
+  transition: opacity .15s;
+}
+.btn-ghost:hover { opacity: .85; }
+.faq-wrap { width: 100%; }
+.fi { border-bottom: 1px solid var(--border-lo); }
+.fi:first-child { border-top: 1px solid var(--border-lo); }
+.fi-q {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s3) 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-3);
+  background: none;
+  border: none;
+  text-align: left;
+  gap: var(--s2);
+  transition: color .15s;
+  line-height: 1.5;
+}
+.fi-q:hover { color: var(--text); }
+.fi-ico {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(240,237,230,.15);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s, border-color .2s, transform .2s;
+}
+.fi-ico svg {
+  width: 10px; height: 10px;
+  stroke: rgba(240,237,230,.5);
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.fi.open .fi-ico { background: var(--green); border-color: var(--green); transform: rotate(45deg); }
+.fi.open .fi-ico svg { stroke: var(--bg); }
+.fi.open .fi-q { color: var(--text); }
+.fi-a {
+  display: none;
+  padding: 0 0 var(--s3);
+  font-size: 13px;
+  color: var(--text-3);
+  line-height: 1.75;
+  padding-right: var(--s5);
+}
+.fi.open .fi-a { display: block; }
+
+/* ─────────────────────────────────────────
+   FORM
+───────────────────────────────────────── */
+.form-wrap {
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.form-l {
+  padding: var(--s8);
+  background: rgba(124,252,0,.04);
+  border-right: 1px solid var(--border-lo);
+  display: flex;
+  flex-direction: column;
+}
+.form-l-h {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 900;
+  letter-spacing: -.04em;
+  line-height: 1.05;
+  color: var(--text);
+  margin-bottom: var(--s2);
+}
+.form-l-h em { color: var(--green); font-style: normal; }
+.form-l-sub {
+  font-size: 14px;
+  color: var(--text-3);
+  line-height: 1.65;
+  margin-bottom: var(--s5);
+}
+.form-perks { display: flex; flex-direction: column; gap: var(--s2); margin-top: auto; }
+.fp { display: flex; align-items: center; gap: var(--s2); font-size: 13px; color: var(--text-3); }
+.fp-dot {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(124,252,0,.3);
+  background: rgba(124,252,0,.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.fp-dot svg {
+  width: 8px; height: 8px;
+  stroke: var(--green);
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.form-r { padding: var(--s8); }
+.form-r-h {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.03em;
+  margin-bottom: 4px;
+}
+.form-r-sub {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-bottom: var(--s4);
+}
+
+.ff-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); margin-bottom: var(--s2); }
+.ff { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--s2); }
+.ff label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+.ff input, .ff select {
+  padding: 12px var(--s2);
+  background: rgba(240,237,230,.05);
+  border: 1px solid rgba(240,237,230,.1);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color .15s, background .15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.ff input::placeholder { color: var(--text-4); }
+.ff select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6' fill='none' stroke='rgba(240,237,230,.3)' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+.ff select option { background: #1a1a1a; }
+.ff input:focus, .ff select:focus {
+  border-color: rgba(124,252,0,.4);
+  background: rgba(124,252,0,.04);
+}
+
+.form-btn {
+  width: 100%;
+  margin-top: var(--s1);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  padding: 15px;
+  border-radius: var(--radius-sm);
+  background: var(--green);
+  color: var(--bg);
+  border: none;
+  transition: opacity .15s, box-shadow .15s;
+}
+.form-btn:hover {
+  opacity: .88;
+  box-shadow: 0 6px 24px rgba(124,252,0,.35);
+}
+.form-legal {
+  font-size: 11px;
+  color: var(--text-4);
+  margin-top: var(--s1);
+  line-height: 1.5;
+  text-align: center;
+}
+.form-success {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--s6) 0;
+}
+.fs-icon {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: rgba(124,252,0,.15);
+  border: 1px solid rgba(124,252,0,.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--s3);
+}
+.fs-icon svg { width: 20px; height: 20px; stroke: var(--green); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fs-h { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: var(--s1); }
+.fs-p { font-size: 13px; color: var(--text-3); line-height: 1.65; max-width: 260px; }
+
+/* ─────────────────────────────────────────
+   FOOTER
+───────────────────────────────────────── */
+footer {
+  padding: var(--s8) var(--s6) var(--s5);
+  border-top: 1px solid var(--border-lo);
+}
+.foot-inner { max-width: var(--max-w); margin: 0 auto; }
+.foot-top {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: var(--s6);
+  margin-bottom: var(--s5);
+  padding-bottom: var(--s5);
+  border-bottom: 1px solid var(--border-lo);
+}
+.foot-logo {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -.04em;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  margin-bottom: var(--s2);
+}
+.foot-desc {
+  font-size: 13px;
+  color: var(--text-4);
+  line-height: 1.65;
+  max-width: 220px;
+}
+.foot-col h4 {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-4);
+  margin-bottom: var(--s2);
+}
+.foot-col a {
+  display: block;
+  font-size: 13px;
+  color: var(--text-3);
+  margin-bottom: var(--s1);
+  transition: color .15s;
+}
+.foot-col a:hover { color: var(--text); }
+.foot-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.foot-copy { font-size: 12px; color: var(--text-4); }
+.foot-socs { display: flex; gap: var(--s1); }
+.foot-soc {
+  width: 32px; height: 32px;
+  border-radius: var(--s1);
+  border: 1px solid rgba(240,237,230,.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-4);
+  transition: border-color .15s, color .15s;
+}
+.foot-soc:hover { border-color: rgba(124,252,0,.4); color: var(--green); }
+
+/* ─────────────────────────────────────────
+   RESPONSIVE — 1280px
+───────────────────────────────────────── */
+@media (max-width: 1280px) {
+  .hero-left { flex: 0 0 380px; }
+  .hero-h1   { font-size: clamp(22px, 1.8vw, 28px); }
+  .ba-widget { max-width: 560px; }
+  .stat-c    { padding: var(--s5) var(--s4); }
+  .calc-l, .calc-r { padding: var(--s6); }
+  .form-l, .form-r { padding: var(--s6); }
+}
+
+/* ─────────────────────────────────────────
+   RESPONSIVE — 1024px
+───────────────────────────────────────── */
+@media (max-width: 1024px) {
+  nav { padding: 0 var(--s4); }
+  .panel { padding: var(--s10) var(--s4); }
+
+  #hero { gap: var(--s5); }
+  .hero-inner { gap: var(--s5); }
+  .hero-left { flex: 0 0 300px; }
+  .hero-h1 { font-size: clamp(22px, 2.8vw, 30px); }
+
+  .feat-grid { grid-template-columns: repeat(2, 1fr); }
+  .faq-layout { gap: var(--s7); }
+  .calc-l, .calc-r { padding: var(--s5); }
+  .form-l, .form-r { padding: var(--s5); }
+}
+
+/* ─────────────────────────────────────────
+   RESPONSIVE — 768px (tablet)
+───────────────────────────────────────── */
+@media (max-width: 768px) {
+  nav { padding: 0 var(--s3); }
+  nav .nav-cta { font-size: 10px; padding: 9px var(--s2); }
+  .panel { padding: var(--s9) var(--s3) var(--s7); }
+  .trust-section { padding: var(--s5) var(--s3); }
+  .trust-inner { grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .trust-div { display: none; }
+  .trust-item { background: var(--bg-mid); padding: var(--s3); }
+  .trust-n { font-size: clamp(20px, 6vw, 28px); }
+
+  /* Kinetic */
+  .kin-line.sz-big { font-size: clamp(32px, 9vw, 64px); }
+  .kin-line.sz-med { font-size: clamp(24px, 6.5vw, 48px); }
+  #hero {
+    flex-direction: column;
+    min-height: auto;
+    padding-top: calc(var(--nav-h) + var(--s4));
+    padding-bottom: var(--s7);
+  }
+  .hero-inner { flex-direction: column; gap: var(--s5); }
+  .hero-left  { flex: none; width: 100%; }
+  .hero-h1    { font-size: clamp(26px, 7vw, 40px); }
+  .hero-sub   { max-width: 100%; }
+  .btn-primary { align-self: stretch; text-align: center; }
+  .hero-proof-row { gap: var(--s3); }
+  .ba-widget  { max-width: 100%; width: 100%; }
+
+  /* Features */
+  .feat-grid { grid-template-columns: 1fr; }
+  .feat-c { padding: var(--s4); }
+
+  /* How */
+  .how-step { grid-template-columns: 48px 1fr; gap: var(--s3); padding: var(--s4) 0; }
+  .hs-h { font-size: 16px; }
+  .hs-p { font-size: 13px; }
+
+  /* Calc */
+  .calc-card { grid-template-columns: 1fr; }
+  .calc-l { border-right: none; border-bottom: 1px solid var(--border); padding: var(--s4); }
+  .calc-r { padding: var(--s4); }
+  .res-big { font-size: clamp(32px, 9vw, 48px); }
+
+  /* Testimonials */
+  .testi-grid { grid-template-columns: 1fr; gap: var(--s2); }
+  .tc { padding: var(--s4); }
+
+  /* FAQ */
+  .faq-layout { grid-template-columns: 1fr; gap: var(--s5); }
+
+  /* Form */
+  .form-wrap { grid-template-columns: 1fr; }
+  .form-l {
+    border-right: none;
+    border-bottom: 1px solid var(--border-lo);
+    padding: var(--s5) var(--s4);
+  }
+  .form-r { padding: var(--s5) var(--s4); }
+  .form-l-h { font-size: clamp(26px, 7vw, 36px); }
+  .ff-row { grid-template-columns: 1fr; }
+
+  /* Footer */
+  footer { padding: var(--s6) var(--s3) var(--s4); }
+  .foot-top { grid-template-columns: 1fr 1fr; gap: var(--s4); }
+}
+
+/* ─────────────────────────────────────────
+   RESPONSIVE — 480px
+───────────────────────────────────────── */
+@media (max-width: 480px) {
+  .panel { padding: var(--s8) var(--s2) var(--s6); }
+  .trust-inner { grid-template-columns: 1fr; }
+
+  .hero-h1 { font-size: clamp(24px, 8vw, 36px); }
+  .hero-proof-row { flex-wrap: wrap; gap: var(--s3); }
+  .hp-n { font-size: 18px; }
+
+  .kin-line.sz-big { font-size: clamp(28px, 10.5vw, 48px); }
+  .kin-line.sz-med { font-size: clamp(22px, 7.5vw, 36px); }
+
+  .ba-hall { grid-template-columns: repeat(6, 1fr); }
+  .ba-metrics { grid-template-columns: 1fr 1fr; }
+  .ba-metric:last-child { grid-column: span 2; }
+
+  nav { padding: 0 var(--s2); }
+  nav .nav-cta { display: none; }
+
+  .foot-top { grid-template-columns: 1fr; }
+  .foot-col { display: none; }
+  .foot-bottom { flex-direction: column; gap: var(--s2); text-align: center; }
+}
+
+/* ─────────────────────────────────────────
+   RESPONSIVE — 375px
+───────────────────────────────────────── */
+@media (max-width: 375px) {
+  .hero-h1 { font-size: 22px; }
+  .kin-line.sz-big { font-size: 26px; }
+  .kin-line.sz-med { font-size: 20px; }
+  .ba-rev-v { font-size: 16px; }
+  .form-l, .form-r { padding: var(--s4) var(--s3); }
+}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div id="cur"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-dot"></div>
+    amazingclub
+  </div>
+  <button class="nav-cta" onclick="document.getElementById('form').scrollIntoView({behavior:'smooth'})">
+    Подключить ресторан
+  </button>
+</nav>
+
+<!-- ─────────── HERO ─────────── -->
+<section class="panel dark" id="hero">
+  <div class="hero-inner">
+
+    <!-- LEFT -->
+    <div class="hero-left">
+      <div class="hero-eyebrow">
+        <span class="hero-eyebrow-dot"></span>Санкт-Петербург · 47 партнёров
+      </div>
+      <h1 class="hero-h1">
+        Динамическое ценообразование<em>для ресторанов</em>
+      </h1>
+      <p class="hero-sub">Снижает цены в тихие часы — возвращает их когда зал полный. Как у авиакомпаний, только для общепита.</p>
+      <button class="btn-primary" onclick="document.getElementById('form').scrollIntoView({behavior:'smooth'})">
+        Подключить ресторан
+      </button>
+      <div class="hero-proof-row">
+        <div class="hp">
+          <div class="hp-n">10%</div>
+          <div class="hp-l">комиссия только<br>с оплаченных счетов</div>
+        </div>
+        <div class="hp">
+          <div class="hp-n">1 день</div>
+          <div class="hp-l">от заявки до<br>первых гостей</div>
+        </div>
+        <div class="hp">
+          <div class="hp-n">0 ₽</div>
+          <div class="hp-l">абонентская<br>плата</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: before/after widget -->
+    <div class="ba-widget">
+      <div class="ba-tabs">
+        <button class="ba-tab active" id="tabBefore" onclick="showPanel('before')">
+          <span class="ba-tab-dot"></span>Без amazingclub
+        </button>
+        <div class="ba-tab-sep"></div>
+        <button class="ba-tab after-tab" id="tabAfter" onclick="showPanel('after')">
+          <span class="ba-tab-dot"></span>С amazingclub
+        </button>
+      </div>
+      <div class="ba-switch-row">
+        <span class="ba-sw-lbl">Вторник · 14:00–16:00</span>
+        <div class="ba-switch on" id="baSwitch" onclick="toggleBA()">
+          <div class="ba-switch-dot"></div>
+        </div>
+        <span class="ba-sw-status" id="baLbl">ON</span>
+      </div>
+      <div class="ba-panels">
+        <!-- BEFORE -->
+        <div class="ba-panel before visible" id="baBefore">
+          <div class="ba-hall" id="hallBefore"></div>
+          <div class="ba-metrics">
+            <div class="ba-metric"><div class="ba-metric-v">3</div><div class="ba-metric-l">гостей</div></div>
+            <div class="ba-metric"><div class="ba-metric-v">88%</div><div class="ba-metric-l">столов пустует</div></div>
+            <div class="ba-metric"><div class="ba-metric-v acc">—</div><div class="ba-metric-l">скидка</div></div>
+          </div>
+          <div class="ba-revenue">
+            <span class="ba-rev-lbl">Выручка за 2 часа</span>
+            <span class="ba-rev-v">6 000 ₽</span>
+          </div>
+        </div>
+        <!-- AFTER -->
+        <div class="ba-panel after" id="baAfter">
+          <div class="ba-disc-badge" id="discBadge">
+            <span class="ba-disc-pulse"></span>Скидка −35% активна
+          </div>
+          <div class="ba-hall" id="hallAfter"></div>
+          <div class="ba-metrics">
+            <div class="ba-metric"><div class="ba-metric-v">17</div><div class="ba-metric-l">гостей</div></div>
+            <div class="ba-metric"><div class="ba-metric-v acc">29%</div><div class="ba-metric-l">столов пустует</div></div>
+            <div class="ba-metric"><div class="ba-metric-v acc">−35%</div><div class="ba-metric-l">скидка</div></div>
+          </div>
+          <div class="ba-revenue">
+            <span class="ba-rev-lbl">Выручка за 2 часа</span>
+            <span class="ba-rev-v">+22 100 ₽</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker"><div class="ticker-inner" id="tickerInner"></div></div>
+
+<!-- TRUST BAR — первое что видит пользователь после hero -->
+<section class="trust-section">
+  <div class="trust-inner">
+    <div class="trust-item">
+      <span class="trust-n">10%</span>
+      <span class="trust-l">комиссия — только с оплаченных счетов</span>
+    </div>
+    <div class="trust-div"></div>
+    <div class="trust-item">
+      <span class="trust-n">1 день</span>
+      <span class="trust-l">от заявки до первых гостей</span>
+    </div>
+    <div class="trust-div"></div>
+    <div class="trust-item">
+      <span class="trust-n">0 ₽</span>
+      <span class="trust-l">абонентская плата и вступительный взнос</span>
+    </div>
+    <div class="trust-div"></div>
+    <div class="trust-item">
+      <span class="trust-n">47</span>
+      <span class="trust-l">ресторанов уже в Санкт-Петербурге</span>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="panel mid" id="features" style="min-height:auto;padding-top:var(--s10);padding-bottom:var(--s10)">
+  <div class="sec-pad">
+    <span class="eyebrow">Возможности</span>
+    <div class="kin-wrap" style="margin-bottom:var(--s7)">
+      <span class="kin-line sz-med">Ценообразование,</span>
+      <span class="kin-line sz-med green">которое работает за вас</span>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-c">
+        <div class="feat-ico"><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></svg></div>
+        <div class="feat-h">Гибкое расписание</div>
+        <p class="feat-p">Дни, часы, процент скидки. Шаблоны под типичные ситуации: тихий обед, поздний вечер.</p>
+      </div>
+      <div class="feat-c">
+        <div class="feat-ico"><svg viewBox="0 0 18 18"><rect x="2" y="3" width="14" height="12" rx="2"/><path d="M6 3V2M12 3V2M2 8h14"/></svg></div>
+        <div class="feat-h">QR-оплата через СБП</div>
+        <p class="feat-p">Гость сканирует QR счёта — скидка применяется автоматически. Никакой интеграции с кассой.</p>
+      </div>
+      <div class="feat-c">
+        <div class="feat-ico"><svg viewBox="0 0 18 18"><path d="M2 14l4-4 3 3 5-7 2 2"/></svg></div>
+        <div class="feat-h">Аналитика и выплаты</div>
+        <p class="feat-p">Полная статистика в кабинете. Выплаты на расчётный счёт каждую пятницу.</p>
+      </div>
+      <div class="feat-c">
+        <div class="feat-ico"><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="7"/><path d="M9 6v4M9 13v.5"/></svg></div>
+        <div class="feat-h">Целевая аудитория</div>
+        <p class="feat-p">Пользователи приложения ищут именно ваш тип заведения — фильтр по кухне и районе.</p>
+      </div>
+      <div class="feat-c">
+        <div class="feat-ico"><svg viewBox="0 0 18 18"><path d="M9 2l2 4 5 .7-3.5 3.4.8 5L9 13l-4.3 2.1.8-5L2 6.7 7 6z"/></svg></div>
+        <div class="feat-h">Поддержка на старте</div>
+        <p class="feat-p">Персональный менеджер, база знаний, чат. Первый месяц под особым наблюдением.</p>
+      </div>
+      <div class="feat-c">
+        <div class="feat-ico"><svg viewBox="0 0 18 18"><rect x="3" y="7" width="12" height="9" rx="2"/><path d="M6 7V5a3 3 0 016 0v2"/></svg></div>
+        <div class="feat-h">Защита от злоупотреблений</div>
+        <p class="feat-p">Лимит визитов на гостя, верификация оплаты, антифрод. Только реальные счета.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW -->
+<section class="panel dark" id="how" style="min-height:auto;padding-top:var(--s10);padding-bottom:var(--s10)">
+  <div class="sec-pad">
+    <span class="eyebrow">Процесс</span>
+    <div class="kin-wrap" style="margin-bottom:var(--s7)">
+      <span class="kin-line sz-med">От заявки до</span>
+      <span class="kin-line sz-med green">первых гостей</span>
+    </div>
+    <div class="how-steps" id="howSteps">
+      <div class="how-step on" data-p="1" onclick="setStep(1)">
+        <div class="hs-n">01</div>
+        <div>
+          <div class="hs-h">Оставьте заявку</div>
+          <p class="hs-p">Менеджер свяжется в течение часа, проведёт консультацию и настроит личный кабинет.</p>
+        </div>
+      </div>
+      <div class="how-step" data-p="2" onclick="setStep(2)">
+        <div class="hs-n">02</div>
+        <div>
+          <div class="hs-h">Настройте скидки</div>
+          <p class="hs-p">Выберите дни и часы, установите процент и лимит мест. Шаблоны — за 5 минут.</p>
+        </div>
+      </div>
+      <div class="how-step" data-p="3" onclick="setStep(3)">
+        <div class="hs-n">03</div>
+        <div>
+          <div class="hs-h">Гости приходят и платят</div>
+          <p class="hs-p">Видят вас в приложении, сканируют QR счёта и оплачивают через СБП со скидкой.</p>
+        </div>
+      </div>
+      <div class="how-step" data-p="4" onclick="setStep(4)">
+        <div class="hs-n">04</div>
+        <div>
+          <div class="hs-h">Получайте выплаты</div>
+          <p class="hs-p">10% комиссия только с оплаченных счетов. Остаток — на ваш счёт каждую пятницу.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATEMENT DIVIDER -->
+<div class="statement-div">
+  <div class="statement-inner">
+    <span class="statement-line">Без платформы пустые столы приносят</span>
+    <span class="statement-zero">0 ₽</span>
+  </div>
+</div>
+
+<!-- CALCULATOR -->
+<section class="panel dark" id="calc" style="min-height:auto;padding-top:var(--s10);padding-bottom:var(--s10)">
+  <div class="sec-pad">
+    <span class="eyebrow">Калькулятор</span>
+    <div class="kin-wrap" style="margin-bottom:var(--s7)">
+      <span class="kin-line sz-med">Сколько вы</span>
+      <span class="kin-line sz-med green">заработаете</span>
+    </div>
+    <div class="calc-card">
+      <div class="calc-l">
+        <div class="calc-title">Параметры</div>
+        <div class="calc-subtitle">Двигайте слайдеры — результат обновляется мгновенно</div>
+        <div class="range-g">
+          <div class="range-top"><span class="range-lbl">Средний чек</span><span class="range-val" id="lc">2 000 ₽</span></div>
+          <input type="range" id="sc" min="500" max="8000" step="100" value="2000" oninput="cu()">
+        </div>
+        <div class="range-g">
+          <div class="range-top"><span class="range-lbl">Скидка</span><span class="range-val" id="ld">30%</span></div>
+          <input type="range" id="sd" min="10" max="50" step="5" value="30" oninput="cu()">
+        </div>
+        <div class="range-g">
+          <div class="range-top"><span class="range-lbl">Гостей / день</span><span class="range-val" id="lg">8</span></div>
+          <input type="range" id="sg" min="2" max="40" step="1" value="8" oninput="cu()">
+        </div>
+        <div class="range-g">
+          <div class="range-top"><span class="range-lbl">Дней в месяц</span><span class="range-val" id="ly">22</span></div>
+          <input type="range" id="sy" min="15" max="30" step="1" value="22" oninput="cu()">
+        </div>
+      </div>
+      <div class="calc-r">
+        <div class="res-lbl">Ваш доход в месяц</div>
+        <div class="res-big" id="rb">211 200 ₽</div>
+        <div class="res-sub">дополнительная выручка с пустых столов</div>
+        <div class="calc-rows">
+          <div class="cr"><span class="cr-l">Гостей в месяц</span><span class="cr-v" id="rg">176</span></div>
+          <div class="cr"><span class="cr-l">Оборот (без скидок)</span><span class="cr-v" id="rv2">352 000 ₽</span></div>
+          <div class="cr"><span class="cr-l">Скидки гостям</span><span class="cr-v neg" id="rd">−105 600 ₽</span></div>
+          <div class="cr"><span class="cr-l">Комиссия 10%</span><span class="cr-v neg" id="rc">−35 200 ₽</span></div>
+          <div class="cr"><span class="cr-l">Ваш доход</span><span class="cr-v pos" id="rn">211 200 ₽</span></div>
+        </div>
+        <div class="calc-note">Без платформы пустые столы приносят 0 ₽. Прогноз на основе данных по Санкт-Петербургу.</div>
+        <button class="btn-calc" onclick="document.getElementById('form').scrollIntoView({behavior:'smooth'})">Хочу такой результат →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="panel mid" style="min-height:auto;padding-top:var(--s10);padding-bottom:var(--s10)">
+  <div class="sec-pad">
+    <span class="eyebrow">Отзывы</span>
+    <div class="kin-wrap" style="margin-bottom:var(--s7)">
+      <span class="kin-line sz-med">Говорят</span>
+      <span class="kin-line sz-med green">партнёры</span>
+    </div>
+    <div class="testi-grid">
+      <div class="tc">
+        <div class="tc-stars">★★★★★</div>
+        <p class="tc-q">«В будние обеды зал стоял полупустой. За первый месяц закрыли 143 чека через платформу — это чистый плюс к тому, что было бы нулём.»</p>
+        <div class="tc-author">
+          <div class="tc-av">АМ</div>
+          <div>
+            <div class="tc-name">Алексей Морозов</div>
+            <div class="tc-role">Владелец, Pasta Fresca</div>
+          </div>
+        </div>
+      </div>
+      <div class="tc feat">
+        <div class="tc-stars">★★★★★</div>
+        <p class="tc-q">«Настройка заняла 20 минут. Кассирам ничего объяснять не нужно — они видят оплату в терминале как обычно.»</p>
+        <div class="tc-author">
+          <div class="tc-av">НС</div>
+          <div>
+            <div class="tc-name">Наталья Соколова</div>
+            <div class="tc-role">Управляющий, Bekitzer</div>
+          </div>
+        </div>
+        <div class="tc-kpi">
+          <div><div class="kv">+89</div><div class="kl">гостей / мес</div></div>
+          <div><div class="kv">138K</div><div class="kl">доп. выручка</div></div>
+        </div>
+      </div>
+      <div class="tc">
+        <div class="tc-stars">★★★★★</div>
+        <p class="tc-q">«Попробовали на месяц — продлили сразу на год. Пустые столы теперь работают.»</p>
+        <div class="tc-author">
+          <div class="tc-av">ДК</div>
+          <div>
+            <div class="tc-name">Дмитрий Кузнецов</div>
+            <div class="tc-role">Рубинштейн 13</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="panel dark" id="faq" style="min-height:auto;padding-top:var(--s10);padding-bottom:var(--s10)">
+  <div class="sec-pad">
+    <div class="faq-layout">
+      <div>
+        <span class="eyebrow">Вопросы</span>
+        <div class="kin-wrap">
+          <span class="kin-line sz-med">Часто</span>
+          <span class="kin-line sz-med green">спрашивают</span>
+        </div>
+        <p class="faq-left-sub">Не нашли ответ — напишите, ответим в течение часа.</p>
+        <button class="btn-ghost" onclick="document.getElementById('form').scrollIntoView({behavior:'smooth'})">Задать вопрос</button>
+      </div>
+      <div class="faq-wrap">
+        <div class="fi open">
+          <button class="fi-q" onclick="tf(this)">Нужно ли менять кассовое ПО?<span class="fi-ico"><svg viewBox="0 0 10 10"><path d="M5 1v8M1 5h8"/></svg></span></button>
+          <div class="fi-a">Нет. Оплата через платформу проходит через СБП как обычный банковский перевод. Никакой интеграции с кассой не требуется.</div>
+        </div>
+        <div class="fi">
+          <button class="fi-q" onclick="tf(this)">Когда я получаю деньги?<span class="fi-ico"><svg viewBox="0 0 10 10"><path d="M5 1v8M1 5h8"/></svg></span></button>
+          <div class="fi-a">Каждую пятницу — перевод на расчётный счёт за предыдущую неделю. Сумма = (счета − скидки) − комиссия 10%.</div>
+        </div>
+        <div class="fi">
+          <button class="fi-q" onclick="tf(this)">Можно ли в любой момент отключиться?<span class="fi-ico"><svg viewBox="0 0 10 10"><path d="M5 1v8M1 5h8"/></svg></span></button>
+          <div class="fi-a">Да. Расписание меняется мгновенно. Отключить можно без штрафов — нет абонентской платы.</div>
+        </div>
+        <div class="fi">
+          <button class="fi-q" onclick="tf(this)">Как гости узнают о моей скидке?<span class="fi-ico"><svg viewBox="0 0 10 10"><path d="M5 1v8M1 5h8"/></svg></span></button>
+          <div class="fi-a">Через приложение — гости видят ваш ресторан на карте с активной скидкой. Помогаем с push по районам.</div>
+        </div>
+        <div class="fi">
+          <button class="fi-q" onclick="tf(this)">Что такое «первый месяц бесплатно»?<span class="fi-ico"><svg viewBox="0 0 10 10"><path d="M5 1v8M1 5h8"/></svg></span></button>
+          <div class="fi-a">Первые 30 дней без комиссии. Вы получаете полную сумму с каждого счёта. Наш способ доказать результат делом.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FORM -->
+<section class="panel mid" id="form" style="min-height:auto;padding-top:var(--s10);padding-bottom:var(--s10)">
+  <div class="sec-pad">
+    <div class="form-wrap">
+      <div class="form-l">
+        <div class="form-l-h">Запустите<br><em>движок</em></div>
+        <p class="form-l-sub">Оставьте заявку — менеджер свяжется в течение часа и поможет настроить первые скидки.</p>
+        <div class="form-perks">
+          <div class="fp"><div class="fp-dot"><svg viewBox="0 0 8 8"><path d="M1 4l2 2 4-4"/></svg></div>Первый месяц без комиссии</div>
+          <div class="fp"><div class="fp-dot"><svg viewBox="0 0 8 8"><path d="M1 4l2 2 4-4"/></svg></div>Подключение за 1 рабочий день</div>
+          <div class="fp"><div class="fp-dot"><svg viewBox="0 0 8 8"><path d="M1 4l2 2 4-4"/></svg></div>Персональный менеджер на старте</div>
+          <div class="fp"><div class="fp-dot"><svg viewBox="0 0 8 8"><path d="M1 4l2 2 4-4"/></svg></div>Без обязательств и абонентской платы</div>
+        </div>
+      </div>
+      <div class="form-r">
+        <div id="fContent">
+          <div class="form-r-h">Оставить заявку</div>
+          <div class="form-r-sub">Ответим в течение часа в рабочее время</div>
+          <div class="ff-row">
+            <div class="ff"><label>Имя</label><input type="text" placeholder="Иван Иванов" id="fn"></div>
+            <div class="ff"><label>Телефон</label><input type="tel" placeholder="+7 (999) 000-00-00" id="fp2"></div>
+          </div>
+          <div class="ff-row">
+            <div class="ff"><label>Заведение</label><input type="text" placeholder="Название ресторана" id="fr"></div>
+            <div class="ff"><label>Тип</label>
+              <select id="ft">
+                <option value="">Выберите тип</option>
+                <option>Ресторан</option>
+                <option>Бар / паб</option>
+                <option>Кафе / бистро</option>
+                <option>Кофейня</option>
+                <option>Другое</option>
+              </select>
+            </div>
+          </div>
+          <div class="ff"><label>Адрес или район</label><input type="text" placeholder="Невский пр. / Петроградская" id="fa"></div>
+          <button class="form-btn" onclick="sub()">Отправить заявку →</button>
+          <div class="form-legal">Нажимая кнопку, вы соглашаетесь с обработкой персональных данных</div>
+        </div>
+        <div class="form-success" id="fOk">
+          <div class="fs-icon"><svg viewBox="0 0 22 22"><path d="M4 11l5 5 9-9"/></svg></div>
+          <div class="fs-h">Заявка принята</div>
+          <p class="fs-p">Менеджер свяжется в течение часа. Пока — посчитайте потенциальный доход в калькуляторе.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-inner">
+    <div class="foot-top">
+      <div>
+        <div class="foot-logo"><div class="nav-dot" style="width:7px;height:7px"></div>amazingclub</div>
+        <p class="foot-desc">Движок динамического ценообразования для ресторанов и баров Санкт-Петербурга.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Продукт</h4>
+        <a href="#features">Возможности</a>
+        <a href="#how">Как работает</a>
+        <a href="#calc">Калькулятор</a>
+      </div>
+      <div class="foot-col">
+        <h4>Компания</h4>
+        <a href="#">О нас</a>
+        <a href="#">Блог</a>
+        <a href="#">Контакты</a>
+      </div>
+      <div class="foot-col">
+        <h4>Правовое</h4>
+        <a href="#">Конфиденциальность</a>
+        <a href="#">Оферта</a>
+        <a href="#">Партнёрство</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span class="foot-copy">© 2026 amazingclub · Санкт-Петербург</span>
+      <div class="foot-socs">
+        <a href="https://t.me/amrah_p" target="_blank" class="foot-soc">tg</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ── CURSOR ── */
+const cur = document.getElementById('cur');
+document.addEventListener('mousemove', e => {
+  cur.style.left = e.clientX + 'px';
+  cur.style.top  = e.clientY + 'px';
+});
+document.querySelectorAll('button,a,input,select,.how-step,.feat-c,.tc,.fi-q').forEach(el => {
+  el.addEventListener('mouseenter', () => cur.classList.add('big'));
+  el.addEventListener('mouseleave', () => cur.classList.remove('big'));
+});
+
+/* ── BEFORE/AFTER ── */
+const TOTAL = 24, BEFORE_F = 3, AFTER_F = 17;
+function buildHall(id, filled, isAfter) {
+  const el = document.getElementById(id);
+  for (let i = 0; i < TOTAL; i++) {
+    const t = document.createElement('div');
+    t.className = 'ba-table';
+    if (i < filled)    t.classList.add('filled');
+    else if (isAfter)  t.classList.add('empty-disc');
+    el.appendChild(t);
+  }
+}
+buildHall('hallBefore', BEFORE_F, false);
+buildHall('hallAfter',  AFTER_F,  true);
+
+let baOn = true;
+function showPanel(which) {
+  const before = document.getElementById('baBefore');
+  const after  = document.getElementById('baAfter');
+  const tabB   = document.getElementById('tabBefore');
+  const tabA   = document.getElementById('tabAfter');
+  const sw     = document.getElementById('baSwitch');
+  const lbl    = document.getElementById('baLbl');
+  const badge  = document.getElementById('discBadge');
+  if (which === 'after') {
+    before.classList.remove('visible'); after.classList.add('visible');
+    tabB.classList.remove('active');    tabA.classList.add('active');
+    sw.classList.add('on'); lbl.textContent = 'ON';
+    badge.style.display = 'inline-flex'; baOn = true;
+  } else {
+    after.classList.remove('visible');  before.classList.add('visible');
+    tabA.classList.remove('active');    tabB.classList.add('active');
+    sw.classList.remove('on'); lbl.textContent = 'OFF';
+    badge.style.display = 'none'; baOn = false;
+  }
+}
+function toggleBA() { showPanel(baOn ? 'before' : 'after'); }
+let autoTimer = setInterval(toggleBA, 3500);
+document.getElementById('baSwitch').addEventListener('click', () => clearInterval(autoTimer));
+
+/* ── TICKER ── */
+const ticks = ['Первый месяц без комиссии','Подключение за 1 день','Без абонентской платы','Комиссия 10% с оплаченных счетов','Выплаты каждую пятницу','Персональный менеджер'];
+const ti = document.getElementById('tickerInner');
+[...ticks, ...ticks].forEach(t => {
+  ti.innerHTML += `<span class="ti"><span class="ti-sep"></span>${t}</span>`;
+});
+
+/* ── HOW STEPS ── */
+function setStep(n) {
+  document.querySelectorAll('.how-step').forEach(s => s.classList.remove('on'));
+  document.querySelector(`[data-p="${n}"]`).classList.add('on');
+}
+
+/* ── CALCULATOR ── */
+function cu() {
+  const c = +document.getElementById('sc').value;
+  const d = +document.getElementById('sd').value;
+  const g = +document.getElementById('sg').value;
+  const y = +document.getElementById('sy').value;
+  document.getElementById('lc').textContent = c.toLocaleString('ru') + ' ₽';
+  document.getElementById('ld').textContent = d + '%';
+  document.getElementById('lg').textContent = g;
+  document.getElementById('ly').textContent = y;
+  const t = g * y, v = t * c, dc = v * d / 100, cm = (v - dc) * .1, n = v - dc - cm;
+  document.getElementById('rg').textContent  = t;
+  document.getElementById('rv2').textContent = v.toLocaleString('ru') + ' ₽';
+  document.getElementById('rd').textContent  = '−' + Math.round(dc).toLocaleString('ru') + ' ₽';
+  document.getElementById('rc').textContent  = '−' + Math.round(cm).toLocaleString('ru') + ' ₽';
+  document.getElementById('rn').textContent  = Math.round(n).toLocaleString('ru') + ' ₽';
+  document.getElementById('rb').textContent  = Math.round(n).toLocaleString('ru') + ' ₽';
+}
+cu();
+
+/* ── FAQ ── */
+function tf(btn) { btn.closest('.fi').classList.toggle('open'); }
+
+/* ── FORM ── */
+const TG_TOKEN = '8654623518:AAFxikKnY7veQ3CWmh9P5A25ISIgW7boIts';
+const TG_CHAT  = '310787383';
+async function sub() {
+  const name  = document.getElementById('fn').value.trim();
+  const phone = document.getElementById('fp2').value.trim();
+  const rest  = document.getElementById('fr').value.trim();
+  const type  = document.getElementById('ft').value;
+  const addr  = document.getElementById('fa').value.trim();
+  document.getElementById('fn').style.borderColor  = name  ? '' : 'rgba(255,80,80,.5)';
+  document.getElementById('fp2').style.borderColor = phone ? '' : 'rgba(255,80,80,.5)';
+  if (!name || !phone) return;
+  const text = `🍽 Новая заявка amazingclub\n\n👤 ${name}\n📞 ${phone}\n🏠 ${rest||'—'}\n📋 ${type}\n📍 ${addr||'—'}\n\n⏰ ${new Date().toLocaleString('ru')}`;
+  try {
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TG_CHAT, text })
+    });
+  } catch(e) {}
+  document.getElementById('fContent').style.display = 'none';
+  document.getElementById('fOk').style.display = 'flex';
+}
+</script>
+</body>
+</html>
