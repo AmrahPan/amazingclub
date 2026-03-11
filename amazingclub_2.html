@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>amazingclub — динамическое ценообразование для ресторанов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Onest',sans-serif;
+  background:#080808;color:#f0ede6;
+  -webkit-font-smoothing:antialiased;
+}
+a{text-decoration:none;color:inherit}
+button{font-family:inherit;cursor:pointer}
+input,select{font-family:inherit}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 48px;height:60px;
+  background:rgba(8,8,8,.85);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(240,237,230,.06);
+}
+.nav-logo{
+  font-family:'Unbounded',sans-serif;
+  font-size:15px;font-weight:900;letter-spacing:-.04em;
+  color:#f0ede6;display:flex;align-items:center;gap:10px;
+}
+.nav-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:#7CFC00;box-shadow:0 0 12px #7CFC00;
+  animation:glow 2s ease infinite;
+}
+@keyframes glow{0%,100%{box-shadow:0 0 8px #7CFC00}50%{box-shadow:0 0 20px #7CFC00,0 0 40px rgba(124,252,0,.3)}}
+.nav-cta{
+  font-family:'Unbounded',sans-serif;
+  font-size:11px;font-weight:700;letter-spacing:.06em;
+  padding:10px 22px;border-radius:100px;
+  background:#7CFC00;color:#080808;border:none;
+  transition:transform .15s,box-shadow .15s;
+}
+.nav-cta:hover{transform:scale(1.04);box-shadow:0 4px 20px rgba(124,252,0,.35)}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  align-items:center;
+  gap:64px;
+  padding:100px 48px 80px;
+  max-width:1240px;
+  margin:0 auto;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(124,252,0,.08);
+  border:1px solid rgba(124,252,0,.15);
+  border-radius:100px;padding:6px 16px;
+  font-size:12px;font-weight:600;color:#7CFC00;
+  margin-bottom:24px;
+}
+.hero-badge-dot{width:6px;height:6px;background:#7CFC00;border-radius:50%}
+.hero h1{
+  font-family:'Unbounded',sans-serif;
+  font-size:clamp(32px,4vw,52px);
+  font-weight:900;letter-spacing:-.04em;line-height:1.05;
+  color:#f0ede6;margin-bottom:20px;
+}
+.hero h1 em{color:#7CFC00;font-style:normal;display:block}
+.hero-sub{
+  font-size:17px;color:rgba(240,237,230,.5);
+  line-height:1.7;margin-bottom:36px;
+  font-weight:300;max-width:420px;
+}
+.hero-stats{
+  display:flex;gap:32px;
+  padding-top:28px;
+  border-top:1px solid rgba(240,237,230,.07);
+}
+.hs{display:flex;flex-direction:column;gap:4px}
+.hs-n{
+  font-family:'Unbounded',sans-serif;
+  font-size:24px;font-weight:900;color:#7CFC00;letter-spacing:-.03em;
+}
+.hs-l{font-size:12px;color:rgba(240,237,230,.35);line-height:1.4}
+
+/* ── FORM CARD ── */
+.form-card{
+  background:rgba(240,237,230,.03);
+  border:1px solid rgba(240,237,230,.1);
+  border-radius:24px;
+  padding:40px;
+}
+.form-card h2{
+  font-family:'Unbounded',sans-serif;
+  font-size:22px;font-weight:700;color:#f0ede6;
+  letter-spacing:-.03em;margin-bottom:6px;
+}
+.form-card .sub{
+  font-size:14px;color:rgba(240,237,230,.35);margin-bottom:28px;
+}
+.ff{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.ff label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(240,237,230,.3)}
+.ff input,.ff select{
+  padding:14px 16px;
+  background:rgba(240,237,230,.05);
+  border:1px solid rgba(240,237,230,.1);
+  border-radius:12px;color:#f0ede6;font-size:16px;outline:none;
+  transition:border-color .15s,background .15s;
+  -webkit-appearance:none;
+}
+.ff input::placeholder{color:rgba(240,237,230,.2)}
+.ff select option{background:#1a1a1a}
+.ff input:focus,.ff select:focus{border-color:rgba(124,252,0,.4);background:rgba(124,252,0,.04)}
+.ff-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-btn{
+  width:100%;margin-top:8px;
+  font-family:'Unbounded',sans-serif;
+  font-size:13px;font-weight:700;letter-spacing:.04em;
+  padding:16px;border-radius:12px;
+  background:#7CFC00;color:#080808;border:none;
+  transition:transform .15s,box-shadow .15s;
+}
+.form-btn:hover{transform:scale(1.02);box-shadow:0 8px 28px rgba(124,252,0,.35)}
+.form-legal{font-size:11px;color:rgba(240,237,230,.18);margin-top:10px;line-height:1.5}
+.form-perks{
+  display:flex;flex-direction:column;gap:10px;
+  margin-top:20px;padding-top:20px;
+  border-top:1px solid rgba(240,237,230,.07);
+}
+.fp{display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(240,237,230,.45)}
+.fp-check{color:#7CFC00;font-size:14px;flex-shrink:0}
+
+/* ── SUCCESS ── */
+.form-success{
+  display:none;flex-direction:column;align-items:center;
+  justify-content:center;text-align:center;padding:60px 20px;
+}
+.fs-icon{
+  width:56px;height:56px;border-radius:50%;
+  background:rgba(124,252,0,.15);border:1px solid rgba(124,252,0,.3);
+  display:flex;align-items:center;justify-content:center;margin-bottom:20px;
+}
+.fs-icon svg{width:24px;height:24px;stroke:#7CFC00;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fs-h{font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;color:#f0ede6;margin-bottom:10px}
+.fs-p{font-size:14px;color:rgba(240,237,230,.4);line-height:1.65;max-width:300px}
+
+/* ── BEFORE / AFTER WIDGET ── */
+.ba-section{
+  padding:80px 48px 100px;
+  max-width:1240px;
+  margin:0 auto;
+}
+.ba-section-label{
+  font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(124,252,0,.7);margin-bottom:16px;
+}
+.ba-section-h{
+  font-family:'Unbounded',sans-serif;
+  font-size:clamp(24px,3vw,36px);font-weight:900;
+  letter-spacing:-.04em;color:#f0ede6;margin-bottom:8px;
+}
+.ba-section-sub{
+  font-size:15px;color:rgba(240,237,230,.4);margin-bottom:48px;line-height:1.6;max-width:600px;
+}
+
+.ba-widget{
+  border:1px solid rgba(240,237,230,.08);
+  border-radius:24px;overflow:hidden;
+  max-width:900px;
+}
+
+/* Tabs */
+.ba-tabs{display:flex;border-bottom:1px solid rgba(240,237,230,.07);background:rgba(240,237,230,.02)}
+.ba-tab{
+  flex:1;padding:16px 20px;
+  font-size:13px;font-weight:600;
+  background:none;border:none;
+  color:rgba(240,237,230,.3);
+  cursor:pointer;transition:color .2s,background .2s;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.ba-tab.active{color:#f0ede6;background:rgba(240,237,230,.04)}
+.ba-tab.after-tab.active{color:#7CFC00;background:rgba(124,252,0,.05)}
+.ba-tab-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.ba-tab-sep{width:1px;background:rgba(240,237,230,.07);align-self:stretch}
+
+/* Panels */
+.ba-panels{position:relative;overflow:hidden}
+.ba-panel{
+  padding:28px 28px 24px;
+  display:none;flex-direction:column;gap:18px;
+}
+.ba-panel.visible{display:flex}
+
+/* Hall grid */
+.ba-hall{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
+.ba-table{
+  aspect-ratio:1;border-radius:5px;
+  border:1px solid rgba(240,237,230,.08);
+  background:rgba(240,237,230,.03);
+  transition:background .5s,border-color .5s;
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+}
+.ba-table::after{
+  content:'';width:5px;height:5px;border-radius:50%;
+  background:transparent;transition:background .5s;
+}
+.ba-table.filled{background:rgba(240,237,230,.1);border-color:rgba(240,237,230,.18)}
+.ba-table.filled::after{background:rgba(240,237,230,.45)}
+.ba-table.dynamic{background:rgba(124,252,0,.07);border-color:rgba(124,252,0,.18)}
+.ba-table.dynamic::after{background:rgba(124,252,0,.35)}
+
+/* Metrics row */
+.ba-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ba-metric{
+  background:rgba(240,237,230,.03);
+  border:1px solid rgba(240,237,230,.07);
+  border-radius:12px;padding:14px 14px 12px;
+}
+.ba-panel.after .ba-metric{background:rgba(124,252,0,.04);border-color:rgba(124,252,0,.09)}
+.ba-metric-v{
+  font-family:'Unbounded',sans-serif;
+  font-size:22px;font-weight:900;letter-spacing:-.03em;
+  line-height:1;margin-bottom:4px;color:rgba(240,237,230,.3);
+}
+.ba-panel.after .ba-metric-v{color:#f0ede6}
+.ba-metric-v.acc{color:rgba(124,252,0,.25)}
+.ba-panel.after .ba-metric-v.acc{color:#7CFC00}
+.ba-metric-l{font-size:10px;color:rgba(240,237,230,.3)}
+
+/* Revenue bar */
+.ba-revenue{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 18px;border-radius:14px;
+  border:1px solid rgba(240,237,230,.07);
+}
+.ba-panel.before .ba-revenue{background:rgba(255,60,60,.04);border-color:rgba(255,60,60,.08)}
+.ba-panel.after .ba-revenue{background:rgba(124,252,0,.06);border-color:rgba(124,252,0,.14)}
+.ba-rev-lbl{font-size:12px;color:rgba(240,237,230,.35)}
+.ba-rev-v{
+  font-family:'Unbounded',sans-serif;
+  font-size:22px;font-weight:900;letter-spacing:-.03em;
+}
+.ba-panel.before .ba-rev-v{color:rgba(255,120,120,.6)}
+.ba-panel.after .ba-rev-v{color:#7CFC00}
+
+/* Dynamic price badge */
+.ba-disc-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(124,252,0,.1);border:1px solid rgba(124,252,0,.2);
+  border-radius:100px;padding:5px 14px;align-self:flex-start;
+  font-size:11px;font-weight:700;color:#7CFC00;
+  font-family:'Unbounded',sans-serif;letter-spacing:.03em;
+}
+.ba-disc-pulse{
+  width:5px;height:5px;background:#7CFC00;border-radius:50%;
+  animation:glow 1.5s ease infinite;
+}
+
+/* ── HOW IT WORKS ── */
+.how{
+  padding:80px 48px 100px;
+  max-width:1240px;
+  margin:0 auto;
+}
+.how-label{
+  font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(124,252,0,.7);margin-bottom:40px;
+}
+.how-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:1px;
+  background:rgba(240,237,230,.07);
+  border:1px solid rgba(240,237,230,.07);
+  border-radius:20px;
+  overflow:hidden;
+}
+.how-item{
+  padding:36px 32px;
+  background:#080808;
+  transition:background .2s;
+}
+.how-item:hover{background:#0d0d0d}
+.how-num{
+  font-family:'Unbounded',sans-serif;
+  font-size:32px;font-weight:900;
+  color:rgba(124,252,0,.2);
+  margin-bottom:16px;
+}
+.how-h{
+  font-family:'Unbounded',sans-serif;
+  font-size:15px;font-weight:700;color:#f0ede6;
+  letter-spacing:-.02em;margin-bottom:10px;
+}
+.how-p{font-size:14px;color:rgba(240,237,230,.4);line-height:1.65}
+
+/* ── FAQ COMPACT ── */
+.faq{
+  padding:0 48px 100px;
+  max-width:1240px;
+  margin:0 auto;
+}
+.faq-label{
+  font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(124,252,0,.7);margin-bottom:32px;
+}
+.fi{border-bottom:1px solid rgba(240,237,230,.07)}
+.fi-q{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  padding:20px 0;font-size:15px;font-weight:400;
+  color:rgba(240,237,230,.6);background:none;border:none;
+  text-align:left;gap:16px;cursor:pointer;transition:color .15s;
+}
+.fi-q:hover{color:#f0ede6}
+.fi-ico{
+  width:24px;height:24px;border-radius:50%;
+  border:1px solid rgba(240,237,230,.15);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  transition:background .2s,border-color .2s,transform .2s;
+}
+.fi-ico svg{width:10px;height:10px;stroke:rgba(240,237,230,.5);fill:none;stroke-width:2;stroke-linecap:round}
+.fi.open .fi-ico{background:#7CFC00;border-color:#7CFC00;transform:rotate(45deg)}
+.fi.open .fi-ico svg{stroke:#080808}
+.fi.open .fi-q{color:#f0ede6}
+.fi-a{display:none;padding:0 0 20px;font-size:14px;color:rgba(240,237,230,.45);line-height:1.75}
+.fi.open .fi-a{display:block}
+
+/* ── BOTTOM CTA ── */
+.bottom-cta{
+  text-align:center;
+  padding:64px 48px 80px;
+  border-top:1px solid rgba(240,237,230,.06);
+}
+.bottom-cta p{
+  font-size:15px;color:rgba(240,237,230,.35);margin-bottom:20px;
+}
+.bottom-cta .cta-btn{
+  font-family:'Unbounded',sans-serif;
+  font-size:13px;font-weight:700;letter-spacing:.04em;
+  padding:16px 36px;border-radius:100px;
+  background:#7CFC00;color:#080808;border:none;
+  transition:transform .15s,box-shadow .15s;
+}
+.bottom-cta .cta-btn:hover{transform:scale(1.04);box-shadow:0 8px 32px rgba(124,252,0,.4)}
+
+/* ── FOOTER ── */
+footer{
+  padding:32px 48px;
+  border-top:1px solid rgba(240,237,230,.06);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.foot-logo{
+  font-family:'Unbounded',sans-serif;
+  font-size:13px;font-weight:900;letter-spacing:-.04em;color:rgba(240,237,230,.3);
+  display:flex;align-items:center;gap:8px;
+}
+.foot-copy{font-size:11px;color:rgba(240,237,230,.15)}
+
+/* ── RESPONSIVE: TABLET ── */
+@media(max-width:960px){
+  nav{padding:0 20px;height:56px}
+  .nav-cta{font-size:10px;padding:8px 16px}
+  .hero{
+    grid-template-columns:1fr;
+    gap:36px;padding:80px 20px 48px;
+    min-height:auto;
+  }
+  .hero-badge{font-size:11px;padding:5px 12px}
+  .hero-sub{font-size:15px;max-width:100%}
+  .hero-stats{gap:20px}
+  .hs-n{font-size:20px}
+  .form-card{padding:28px;border-radius:20px}
+  .form-card h2{font-size:20px}
+  .ff-row{grid-template-columns:1fr}
+  .ba-section{padding:48px 20px 64px}
+  .ba-section-h{font-size:clamp(20px,5vw,28px)}
+  .ba-section-sub{font-size:14px;margin-bottom:32px}
+  .ba-tab{font-size:11px;padding:12px 12px;gap:6px}
+  .ba-panel{padding:20px 16px 18px;gap:14px}
+  .ba-hall{gap:4px}
+  .ba-metrics{grid-template-columns:1fr 1fr}
+  .ba-metric:last-child{grid-column:span 2}
+  .ba-metric{padding:10px 12px 8px}
+  .ba-metric-v{font-size:18px}
+  .ba-rev-v{font-size:18px}
+  .ba-disc-badge{font-size:10px;padding:4px 10px}
+  .how{padding:48px 20px 64px}
+  .how-label{margin-bottom:28px}
+  .how-grid{grid-template-columns:1fr 1fr}
+  .how-item{padding:28px 24px}
+  .how-num{font-size:26px;margin-bottom:12px}
+  .how-h{font-size:14px}
+  .how-p{font-size:13px}
+  .faq{padding:0 20px 64px}
+  .fi-q{font-size:14px;padding:16px 0}
+  .fi-a{font-size:13px}
+  .bottom-cta{padding:40px 20px 56px}
+  .bottom-cta .cta-btn{font-size:12px;padding:14px 28px;width:100%;border-radius:12px}
+  footer{padding:24px 20px;flex-direction:column;gap:12px;text-align:center}
+}
+
+/* ── RESPONSIVE: SMALL MOBILE ── */
+@media(max-width:480px){
+  nav{padding:0 16px;height:52px}
+  .nav-logo{font-size:13px;gap:8px}
+  .nav-dot{width:6px;height:6px}
+  .nav-cta{font-size:9px;padding:7px 14px}
+  .hero{padding:72px 16px 40px;gap:28px}
+  .hero-badge{font-size:10px;padding:4px 10px;margin-bottom:16px}
+  .hero h1{font-size:clamp(24px,7.5vw,34px);margin-bottom:14px}
+  .hero-sub{font-size:14px;line-height:1.6;margin-bottom:24px}
+  .hero-stats{flex-wrap:wrap;gap:12px}
+  .hs{flex:1;min-width:80px}
+  .hs-n{font-size:18px}
+  .hs-l{font-size:11px}
+  .form-card{padding:20px;border-radius:16px}
+  .form-card h2{font-size:18px}
+  .form-card .sub{font-size:13px;margin-bottom:20px}
+  .ff input,.ff select{padding:12px 14px;font-size:16px;border-radius:10px}
+  .ff label{font-size:9px}
+  .form-btn{font-size:12px;padding:14px;border-radius:10px}
+  .form-perks{gap:8px;margin-top:16px;padding-top:16px}
+  .fp{font-size:12px}
+  .ba-section{padding:36px 16px 48px}
+  .ba-section-label{font-size:10px;margin-bottom:12px}
+  .ba-section-h{font-size:clamp(18px,5vw,24px);margin-bottom:6px}
+  .ba-section-sub{font-size:13px;line-height:1.55;margin-bottom:24px}
+  .ba-widget{border-radius:16px}
+  .ba-tab{font-size:10px;padding:10px 8px;gap:5px;flex-direction:column}
+  .ba-tab-dot{display:none}
+  .ba-panel{padding:14px 12px 12px;gap:10px}
+  .ba-hall{grid-template-columns:repeat(6,1fr);gap:3px}
+  .ba-metrics{grid-template-columns:1fr 1fr;gap:6px}
+  .ba-metric{padding:8px 10px 6px;border-radius:8px}
+  .ba-metric-v{font-size:16px}
+  .ba-metric-l{font-size:9px}
+  .ba-revenue{padding:10px 12px;border-radius:10px}
+  .ba-rev-lbl{font-size:11px}
+  .ba-rev-v{font-size:16px}
+  .ba-disc-badge{font-size:9px;padding:3px 8px}
+  .how{padding:36px 16px 48px}
+  .how-label{font-size:10px;margin-bottom:20px}
+  .how-grid{grid-template-columns:1fr;gap:1px}
+  .how-item{padding:24px 20px}
+  .how-num{font-size:24px;margin-bottom:10px}
+  .how-h{font-size:13px;margin-bottom:6px}
+  .how-p{font-size:12px;line-height:1.55}
+  .faq{padding:0 16px 48px}
+  .faq-label{font-size:10px;margin-bottom:24px}
+  .fi-q{font-size:13px;padding:14px 0}
+  .fi-a{font-size:12px;line-height:1.65}
+  .bottom-cta{padding:32px 16px 48px}
+  .bottom-cta p{font-size:13px;margin-bottom:14px}
+  .bottom-cta .cta-btn{font-size:11px;padding:14px 24px}
+  footer{padding:20px 16px}
+  .foot-logo{font-size:12px}
+  .foot-copy{font-size:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-dot"></div>
+    amazingclub
+  </div>
+  <button class="nav-cta" onclick="document.getElementById('form-card').scrollIntoView({behavior:'smooth',block:'center'})">
+    Оставить заявку
+  </button>
+</nav>
+
+<!-- ─────────── HERO + FORM ─────────── -->
+<section class="hero">
+
+  <!-- LEFT: message -->
+  <div>
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      Санкт-Петербург · набираем первые 20 заведений
+    </div>
+    <h1>
+      Пустые столы<br>начинают<br><em>зарабатывать</em>
+    </h1>
+    <p class="hero-sub">Авиакомпании, отели и такси давно меняют цены в реальном времени. Теперь это работает для ресторанов. Наша AI-платформа анализирует паттерны загрузки вашего зала и рассчитывает оптимальную цену для каждого временного слота — revenue management, который раньше был доступен только крупным сетям.</p>
+    <div class="hero-stats">
+      <div class="hs"><div class="hs-n">0 ₽</div><div class="hs-l">абонентская<br>плата</div></div>
+      <div class="hs"><div class="hs-n">5%</div><div class="hs-l">комиссия только<br>с оплаченных счетов</div></div>
+      <div class="hs"><div class="hs-n">1 мес</div><div class="hs-l">бесплатный<br>тестовый период</div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: form -->
+  <div class="form-card" id="form-card">
+    <div id="fContent">
+      <h2>Подключить ресторан</h2>
+      <div class="sub">Свяжемся в течение часа и поможем настроить</div>
+      <div class="ff-row">
+        <div class="ff"><label>Имя</label><input type="text" placeholder="Иван" id="fn"></div>
+        <div class="ff"><label>Телефон</label><input type="tel" placeholder="+7 (999) 000-00-00" id="fp2"></div>
+      </div>
+      <div class="ff-row">
+        <div class="ff"><label>Заведение</label><input type="text" placeholder="Название" id="fr"></div>
+        <div class="ff"><label>Тип</label>
+          <select id="ft">
+            <option>Ресторан</option>
+            <option>Бар / паб</option>
+            <option>Кафе / бистро</option>
+            <option>Кофейня</option>
+            <option>Другое</option>
+          </select>
+        </div>
+      </div>
+      <button class="form-btn" onclick="sub()">Оставить заявку →</button>
+      <div class="form-legal">Нажимая кнопку, вы соглашаетесь с обработкой персональных данных</div>
+      <div class="form-perks">
+        <div class="fp"><span class="fp-check">✓</span>Первый месяц без комиссии</div>
+        <div class="fp"><span class="fp-check">✓</span>Подключение за 1 рабочий день</div>
+        <div class="fp"><span class="fp-check">✓</span>Без обязательств — отключитесь в любой момент</div>
+      </div>
+    </div>
+    <div class="form-success" id="fOk">
+      <div class="fs-icon"><svg viewBox="0 0 22 22"><path d="M4 11l5 5 9-9"/></svg></div>
+      <div class="fs-h">Заявка принята!</div>
+      <p class="fs-p">Менеджер свяжется в течение часа в рабочее время.</p>
+    </div>
+  </div>
+
+</section>
+
+<!-- ─────────── BEFORE / AFTER WIDGET ─────────── -->
+<section class="ba-section">
+  <div class="ba-section-label">Визуализация</div>
+  <div class="ba-section-h">Вторник, 14:00. Один и тот же зал</div>
+  <div class="ba-section-sub">AI-модель анализирует исторические данные по загрузке, среднему чеку, дню недели и времени суток. Алгоритм находит ценовой оптимум — точку, в которой маржинальная выручка с дополнительного гостя максимальна.</div>
+
+  <div class="ba-widget">
+    <!-- Tabs -->
+    <div class="ba-tabs">
+      <button class="ba-tab active" id="tabBefore" onclick="showPanel('before')">
+        <span class="ba-tab-dot"></span>Фиксированные цены
+      </button>
+      <div class="ba-tab-sep"></div>
+      <button class="ba-tab after-tab" id="tabAfter" onclick="showPanel('after')">
+        <span class="ba-tab-dot"></span>Динамические цены · AI
+      </button>
+    </div>
+
+    <!-- Panels -->
+    <div class="ba-panels">
+
+      <!-- BEFORE -->
+      <div class="ba-panel before visible" id="baBefore">
+        <div class="ba-hall" id="hallBefore"></div>
+        <div class="ba-metrics">
+          <div class="ba-metric"><div class="ba-metric-v">3</div><div class="ba-metric-l">гостей</div></div>
+          <div class="ba-metric"><div class="ba-metric-v">88%</div><div class="ba-metric-l">столов пустует</div></div>
+          <div class="ba-metric"><div class="ba-metric-v acc">—</div><div class="ba-metric-l">оптимизация</div></div>
+        </div>
+        <div class="ba-revenue">
+          <span class="ba-rev-lbl">Выручка за 2 часа</span>
+          <span class="ba-rev-v">6 000 ₽</span>
+        </div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="ba-panel after" id="baAfter">
+        <div class="ba-disc-badge">
+          <span class="ba-disc-pulse"></span>AI-цена активна · −35%
+        </div>
+        <div class="ba-hall" id="hallAfter"></div>
+        <div class="ba-metrics">
+          <div class="ba-metric"><div class="ba-metric-v">17</div><div class="ba-metric-l">гостей</div></div>
+          <div class="ba-metric"><div class="ba-metric-v">29%</div><div class="ba-metric-l">столов пустует</div></div>
+          <div class="ba-metric"><div class="ba-metric-v acc">+467%</div><div class="ba-metric-l">рост выручки</div></div>
+        </div>
+        <div class="ba-revenue">
+          <span class="ba-rev-lbl">Выручка за 2 часа</span>
+          <span class="ba-rev-v">+22 100 ₽</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── HOW IT WORKS ─────────── -->
+<section class="how">
+  <div class="how-label">Как это работает</div>
+  <div class="how-grid">
+    <div class="how-item">
+      <div class="how-num">01</div>
+      <div class="how-h">AI изучает ваш зал</div>
+      <p class="how-p">Алгоритм анализирует паттерны загрузки: дни недели, часы, сезонность. Выявляет часы с низким demand и рассчитывает оптимальную цену.</p>
+    </div>
+    <div class="how-item">
+      <div class="how-num">02</div>
+      <div class="how-h">Гости находят вас</div>
+      <p class="how-p">Видят ваше заведение в приложении с динамической ценой. Фильтр по кухне и району.</p>
+    </div>
+    <div class="how-item">
+      <div class="how-num">03</div>
+      <div class="how-h">Платят через СБП</div>
+      <p class="how-p">Сканируют QR на счёте — динамическая цена применяется автоматически. Интеграция с кассой не нужна.</p>
+    </div>
+    <div class="how-item">
+      <div class="how-num">04</div>
+      <div class="how-h">Получаете деньги</div>
+      <p class="how-p">Выплаты на расчётный счёт каждую пятницу. Комиссия 5% только с оплаченных чеков.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── FAQ ─────────── -->
+<section class="faq">
+  <div class="faq-label">Частые вопросы</div>
+  <div class="fi open">
+    <button class="fi-q" onclick="tf(this)">Нужно ли менять кассовое ПО?<span class="fi-ico"><svg viewBox="0 0 10 10"><path d="M5 1v8M1 5h8"/></svg></span></button>
+    <div class="fi-a">Нет. Оплата проходит через СБП как обычный перевод. Никакой интеграции с кассой не требуется.</div>
+  </div>
+  <div class="fi">
+    <button class="fi-q" onclick="tf(this)">Когда я получаю деньги?<span class="fi-ico"><svg viewBox="0 0 10 10"><path d="M5 1v8M1 5h8"/></svg></span></button>
+    <div class="fi-a">Каждую пятницу — перевод на расчётный счёт. Сумма = оборот минус ценовая оптимизация минус комиссия 5%.</div>
+  </div>
+  <div class="fi">
+    <button class="fi-q" onclick="tf(this)">Можно ли отключиться в любой момент?<span class="fi-ico"><svg viewBox="0 0 10 10"><path d="M5 1v8M1 5h8"/></svg></span></button>
+    <div class="fi-a">Да. Нет абонентской платы, нет штрафов. Ценовые параметры меняются мгновенно.</div>
+  </div>
+  <div class="fi">
+    <button class="fi-q" onclick="tf(this)">Как AI определяет оптимальную цену?<span class="fi-ico"><svg viewBox="0 0 10 10"><path d="M5 1v8M1 5h8"/></svg></span></button>
+    <div class="fi-a">Модель обучается на данных по загрузке, среднему чеку и конверсии. Она находит ценовую точку, при которой маржинальная прибыль с каждого дополнительного гостя максимальна — классический подход revenue management, адаптированный для HoReCa.</div>
+  </div>
+  <div class="fi">
+    <button class="fi-q" onclick="tf(this)">Что значит «первый месяц бесплатно»?<span class="fi-ico"><svg viewBox="0 0 10 10"><path d="M5 1v8M1 5h8"/></svg></span></button>
+    <div class="fi-a">30 дней без комиссии. Вы получаете полную сумму с каждого чека. Наш способ доказать результат.</div>
+  </div>
+</section>
+
+<!-- ─────────── BOTTOM CTA ─────────── -->
+<div class="bottom-cta">
+  <p>Набираем первые 20 заведений в Санкт-Петербурге</p>
+  <button class="cta-btn" onclick="document.getElementById('form-card').scrollIntoView({behavior:'smooth',block:'center'})">Подключить ресторан →</button>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-logo"><div class="nav-dot" style="width:6px;height:6px"></div>amazingclub</div>
+  <span class="foot-copy">© 2026 amazingclub · Санкт-Петербург</span>
+</footer>
+
+<script>
+/* ── BEFORE/AFTER WIDGET ── */
+const TOTAL_TABLES = 24;
+const BEFORE_FILLED = 3;
+const AFTER_FILLED = 17;
+
+function buildHall(id, filled, isAfter) {
+  const el = document.getElementById(id);
+  for (let i = 0; i < TOTAL_TABLES; i++) {
+    const t = document.createElement('div');
+    t.className = 'ba-table';
+    if (i < filled) t.classList.add('filled');
+    else if (isAfter) t.classList.add('dynamic');
+    el.appendChild(t);
+  }
+}
+buildHall('hallBefore', BEFORE_FILLED, false);
+buildHall('hallAfter', AFTER_FILLED, true);
+
+let baOn = false; // starts on "before"
+
+function showPanel(which) {
+  const before = document.getElementById('baBefore');
+  const after  = document.getElementById('baAfter');
+  const tabB   = document.getElementById('tabBefore');
+  const tabA   = document.getElementById('tabAfter');
+
+  if (which === 'after') {
+    before.classList.remove('visible');
+    after.classList.add('visible');
+    tabB.classList.remove('active');
+    tabA.classList.add('active');
+    baOn = true;
+  } else {
+    after.classList.remove('visible');
+    before.classList.add('visible');
+    tabA.classList.remove('active');
+    tabB.classList.add('active');
+    baOn = false;
+  }
+}
+
+function toggleBA() { showPanel(baOn ? 'before' : 'after'); }
+
+// Auto-toggle every 3 seconds
+let autoTimer = setInterval(() => toggleBA(), 3000);
+document.querySelector('.ba-widget').addEventListener('click', () => {
+  clearInterval(autoTimer);
+});
+
+/* ── FAQ ── */
+function tf(btn) { btn.closest('.fi').classList.toggle('open'); }
+
+/* ── FORM ── */
+const TG_TOKEN = '8654623518:AAFxikKnY7veQ3CWmh9P5A25ISIgW7boIts';
+const TG_CHAT  = '310787383';
+
+async function sub() {
+  const name  = document.getElementById('fn').value.trim();
+  const phone = document.getElementById('fp2').value.trim();
+  const rest  = document.getElementById('fr').value.trim();
+  const type  = document.getElementById('ft').value;
+
+  document.getElementById('fn').style.borderColor  = name  ? '' : 'rgba(255,80,80,.5)';
+  document.getElementById('fp2').style.borderColor = phone ? '' : 'rgba(255,80,80,.5)';
+  if (!name || !phone) return;
+
+  const text = `🍽 Новая заявка amazingclub\n\n👤 ${name}\n📞 ${phone}\n🏠 ${rest||'—'}\n📋 ${type}\n\n⏰ ${new Date().toLocaleString('ru')}`;
+  try {
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:TG_CHAT,text})
+    });
+  } catch(e){}
+  document.getElementById('fContent').style.display='none';
+  document.getElementById('fOk').style.display='flex';
+}
+</script>
+</body>
+</html>
